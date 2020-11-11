@@ -94,7 +94,6 @@ def initialize(pl1,pl2,lama_deck,field):#初期化
     pl1.state = 0#stateを0で初期化
     pl2.state = 0#stateを0で初期化
     field = lama_deck.pop(0)#デッキの一番上を場に出す
-    firstmove = True
     return lama_deck,field
 
 def pointMinus(pl):#上がったときに点数を下げる
@@ -161,7 +160,6 @@ def playCard(pl,lama_deck,field,eq,plus):#行動選択
 #ココからメイン
 if __name__ == '__main__':
     global lama_deck #デッキ
-    global firstmove
     field = 0 #場の数
     eq = 0 #stateを出すときに使う．fieldと同じ数
     plus = 0 #stateを出すときに使う．eqの一つ次の数
@@ -189,7 +187,9 @@ if __name__ == '__main__':
                     lama_deck = box[0]
                     field = box[1]
                 setpointUpdate(player1)
-                eqplusChange(field)
+                eqplus = eqplusChange(field)
+                eq = eqplus[0]
+                plus = eqplus[1]
                 stateUpdate(player1,player2)
                 if(isFinish(player1,player2)):#先手側が上がっていた時にプレイできないようにするため
                     if player2.state < 5:#降りていないかの確認
