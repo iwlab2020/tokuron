@@ -28,7 +28,7 @@ def eqplusChange(field):#eq,plusを算出する
         print("エラー")
     return eq,plus
 
-def stateJudge(pl):
+def stateJudge(pl,eq,plus):
     if len(pl.hand) == 0:#上がっている状態
         pl.state = 6
     elif pl.state == 5:#降りている状態
@@ -43,9 +43,9 @@ def stateJudge(pl):
     else:#何も出せない状態
         pl.state = 4
 
-def stateUpdate(pl1,pl2):
-    stateJudge(pl1)
-    stateJudge(pl2)
+def stateUpdate(pl1,pl2,eq,plus):
+    stateJudge(pl1,eq,plus)
+    stateJudge(pl2,eq,plus)
 
 def exchange(black,white):#black,whiteを両替する
     a = divmod(white,5)
@@ -154,6 +154,7 @@ def playCard(pl,lama_deck,field,eq,plus):#行動選択
             else:#
                 x = deck.pop(0)
                 pl.hand.append(x)
+                pl.hand.sort()
                 x = 1
     return deck, fi
 
@@ -178,7 +179,7 @@ if __name__ == '__main__':
                 eqplus = eqplusChange(field)#eqとplusの値を算出
                 eq = eqplus[0]
                 plus = eqplus[1]
-                stateUpdate(player1,player2)
+                stateUpdate(player1,player2,eq,plus)
                 if player1.state < 5:#降りていないかの確認
                     print("場の数" )
                     print(field)
@@ -190,7 +191,7 @@ if __name__ == '__main__':
                 eqplus = eqplusChange(field)
                 eq = eqplus[0]
                 plus = eqplus[1]
-                stateUpdate(player1,player2)
+                stateUpdate(player1,player2,eq,plus)
                 if(isFinish(player1,player2)):#先手側が上がっていた時にプレイできないようにするため
                     if player2.state < 5:#降りていないかの確認
                         print("場の数" )
