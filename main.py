@@ -184,32 +184,112 @@ def randomact(pl,lama_deck,field,eq,plus):
                 x = 1
     return deck,fi
 
+def canMove(s, a):
+    if s >= 1 and s <= 6 and a >= 1 and a <= 4:
+        if (s == 1 and a == 3) or (a == 0):
+            return False
+        elif (s == 2 and a == 2) or (a == 0):
+            return False
+        elif s == 3 and a == 0:
+            return False
+        elif (s == 4) and (a == 2 or a == 3):
+            return False
+        else:
+            return True
+    else:
+        return False
+
+def MinQ(Q, s):
+    min = Q[s][0]
+    act = 0
+    for i in range(1, 4):
+        if (min > Q[s][i]) and canMove(s, i):
+            min = Q[s][i]
+            act = i
+    return act
+def MaxQ(Q, s):
+    max = Q[s][0]
+    act = 0
+    for i in range(1, 4):
+        if (max < Q[s][i]) and canMove(s, i):
+            max = Q[s][i]
+            act = i
+    return act
+
+# ε-Greedy選択
+def eGreedy(Q, s, ipusiron, pl):
+    if random.random() < 1-ipusiron:	# 確率1-eでgreedy
+        return MaxQ(Q, pl.state)
+    else:			# 確率eでランダム
+        return random.randint(0, 3)
+
 def Q_learning(pl,lama_deck,field,eq,plus):
     #1:同じ数字 2:一つ大きい数字 3:2種類 4:何も出せない 5:終了状態, 6:上がった状態
-    qpoint = random.randint(1,100)
-    ipusiron = 10
-    if(ipusiron > qpoint):
-        ganma = 0.1
-        arufa = 0.5
-        s = pl.state
-        s2 = 0
-        if(s < 5):
-            Q_table[s, a] = (1 - arufa) * Q[s, a] + arufa (reward + ganma)
-    else:
-        randomact(pl,lama_deck,field,eq,plus)
+    x = 0
+    ipusiron = 0.1
+    ganma = 0.99
+    arufa = 0.3
+    s = pl.state
+    deck = lama_deck
+    
+    fi = field
+    setP = (pl.black_set * 5 + pl.white_set)
+    while x == 0:
+        act = eGreedy(Q_table, s, ipusiron, pl)
+        if(act == 1):
+            if (canMove(s,act)):
+                fold(pl)
+                x = 1
+        elif(act == 2):
+            if (canMove(s,act)):
+                y = pl.hand.index(fi)
+                pl.hand.pop(y)
+                x = 1
+        elif(act == 3):
+            if (canMove(s,act)):
+                fi = plus
+                y = pl.hand.index(fi)
+                pl.hand.pop(y)
+                x = 1
+        else:
+            if len(deck) != 0:
+                x = deck.pop(0)
+                pl.hand.append(x)
+                pl.hand.sort()
+                x = 1
+    #count = 0
+    reward = 0
+    #for i in pl.hand:
+        #count += 1
+        #reward += i
+    
+    setpointUpdate(pl)
+    reward = setP-(pl.black_set * 5 + pl.white_set)
+    s2 = pl.state
+    act2 = eGreedy(Q_table, s, ipusiron, pl)
+    Q_table[s][act] = (1 - arufa) * Q_table[s][act] + arufa * (reward + ganma * Q_table[s2][act2])
     return deck,fi
 
 
 #ココからメイン
 if __name__ == '__main__':
     global lama_deck #デッキ
-    Q_table = [[0 for i in range(5)] for j in range(6)]
+    Q_table = [[0 for i in range(4)] for j in range(7)]
+    Q_table[1][3] = -1000
+    Q_table[2][2] = -1000
+    Q_table[4][2] = -1000
+    Q_table[4][3] = -1000
     field = 0 #場の数
     eq = 0 #stateを出すときに使う．fieldと同じ数
     plus = 0 #stateを出すときに使う．eqの一つ次の数
     lama_deck=[]
-    playcount = 1 #回すゲーム数
+    playcount = 1000 #回すゲーム数
     i = 0 #
+    path='result.csv'
+    fo=open(path,'w')
+    result = ""
+    winner = 0
+    before = 0
     #下からゲームスタート
     while i < playcount:
         player1 = Player()
@@ -224,10 +304,10 @@ if __name__ == '__main__':
                 plus = eqplus[1]
                 stateUpdate(player1,player2,eq,plus)
                 if player1.state < 5:#降りていないかの確認
-                    print("場の数" )
-                    print(field)
-                    print("先手")
-                    box = randomact(player1,lama_deck,field,eq,plus)
+                    #print("場の数" )
+                    #print(field)
+                    #print("先手")
+                    box = Q_learning(player1,lama_deck,field,eq,plus)
                     lama_deck = box[0]
                     field = box[1]
                 setpointUpdate(player1)
@@ -237,9 +317,9 @@ if __name__ == '__main__':
                 stateUpdate(player1,player2,eq,plus)
                 if(isFinish(player1,player2)):#先手側が上がっていた時にプレイできないようにするため
                     if player2.state < 5:#降りていないかの確認
-                        print("場の数" )
-                        print(field)
-                        print("後手")
+                        #print("場の数" )
+                        #print(field)
+                        #print("後手")
                         box = randomact(player2,lama_deck,field,eq,plus)
                         lama_deck = box[0]
                         field = box[1]
@@ -250,8 +330,15 @@ if __name__ == '__main__':
                 pointMinus(player1)#上がっていたら一枚減らす
             if len(player2.hand) == 0:
                 pointMinus(player2)#上がっていたら一枚減らす
-            print("先手のポイント")
-            print(player1.black_game * 5 + player1.white_game)
-            print("後手のポイント")
-            print(player2.black_game * 5 + player2.white_game)
+        LastPoint1 = player1.black_game * 5 + player1.white_game
+        LastPoint2 = player2.black_game * 5 + player2.white_game
         i += 1
+        #result+=str(LastPoint1)+","+str(LastPoint2)+"\n"
+        if LastPoint1 < LastPoint2:
+            winner+=1
+        result+=str(winner/i)+"\n"
+        if i%1000 == 0:
+            result+=str((winner-before)/1000)+'\n'
+            before = winner
+    fo.write(result)
+    fo.close()
