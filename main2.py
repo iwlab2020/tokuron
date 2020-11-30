@@ -95,8 +95,8 @@ def gamepointUpdate(pl):#game中のpointを更新
     pl.white_game = pl.white_set
 
 def initialize(pl1,pl2,lama_deck,field):#初期化
-    lama_deck=[0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]#デッキのリセット
-    #random.shuffle(lama_deck)#デッキのシャッフル
+    #lama_deck=[0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]#デッキのリセット
+    random.shuffle(lama_deck)#デッキのシャッフル
     hand1=[]#1の手札を保存
     hand2=[]#2の手札を保存
     for i in range(4):#手札を配る
@@ -231,7 +231,7 @@ def eGreedy(Q, s, e):
         return random.randrange(4)
 
 def QUpdate(Q,R,lastpoint,episode): #PSのQtable更新
-    Cbid = 0.1
+    Cbid = 0.01
     #print("Rテーブルのデバッグ："+str(R[episode].action)+":"+str(R[episode].rstate)) 
     for i in range(episode):
         print("Qに挿入するRテーブルのデバッグ："+str(R[i].action)+":"+str(R[i].rstate)+":i:"+str(i))
@@ -247,10 +247,10 @@ if __name__ == '__main__':
     plus = 0 #stateを出すときに使う．eqの一つ次の数
     Cbid = 1
     lama_deck=[]
-    Q=[[0]*5]*4 #Qtable
+    Q=[[0 for j in range(5)] for i in range(4)] #Qtable
     LastPoint1 = 0
     LastPoint2 = 0
-    playcount = 1000 #回すゲーム数
+    playcount = 100 #回すゲーム数
     path='result.csv'
     fo=open(path,'w')
     result = ""
