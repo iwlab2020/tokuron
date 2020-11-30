@@ -95,8 +95,8 @@ def gamepointUpdate(pl):#game中のpointを更新
     pl.white_game = pl.white_set
 
 def initialize(pl1,pl2,lama_deck,field):#初期化
-    #lama_deck=[0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]#デッキのリセット
-    random.shuffle(lama_deck)#デッキのシャッフル
+    lama_deck=[0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]#デッキのリセット
+    #random.shuffle(lama_deck)#デッキのシャッフル
     hand1=[]#1の手札を保存
     hand2=[]#2の手札を保存
     for i in range(4):#手札を配る
@@ -142,32 +142,33 @@ def playCard(pl,lama_deck,field,eq,plus,R,episode,Q):#行動選択(PS)
     x = 0#ループ用
     state = pl.state
     while x < 1:#行動選択するまで終了しないために
-        #print("入力:0:降り,1:カードを出す2:カードを引く,3:何もしない(デバッグ用)")
+        #print("入力:0:降り,1:fieldを出す,2:nextを出す,3:カードを引く,")
         #print(pl.hand)
         #a = ActionSelect(pl.state)#行動選択
+        next = (field + 1) % 4
         a = eGreedy(Q,state,0.2)
         if int(a) == 0:#降り
             fold(pl)
             x = 1
         elif int(a) == 1:#カードを出す
-            if pl.state == 4:
-                print("それはできません")
+            if pl.state == 4 or pl.state == 2:
+                #print("それはできません")
+                continue
             else:
-                print("カード")
-                print(pl.hand)
-                y = 0
-                while y < 1:#エラー処理
-                    b = random.randrange(len(pl.hand))#配列の位置を選択
-                    if (pl.hand[int(b)] == eq) | (pl.hand[int(b)] == plus):#出せるかどうか
-                        y = 1
-                    else:
-                        print("それは出せません")
-                fi = pl.hand[int(b)]
-                pl.hand.pop(int(b))
+                pl.hand.remove(fi)
                 x = 1
-        elif int(a) == 2:#
+        elif int(a) == 2:
+            if pl.state == 4 or pl.state == 1:
+                #print("それはできません")
+                continue
+            else:
+                #i_next = pl.hand.index(next)
+                pl.hand.remove(next)
+                x = 1
+        elif int(a) == 3:#
             if len(deck) == 0:#
-                print("それはできません")
+                #print("それはできません")
+                continue
             else:#
                 x = deck.pop(0)
                 pl.hand.append(x)
@@ -189,23 +190,25 @@ def playCardRnd(pl,lama_deck,field,eq,plus):#行動選択(乱数)
             x = 1
         elif int(a) == 1:#カードを出す
             if pl.state == 4:
-                print("それはできません")
+                #print("それはできません")
+                continue
             else:
-                print("カード")
-                print(pl.hand)
+                #print("カード")
+                #print(pl.hand)
                 y = 0
                 while y < 1:#エラー処理
                     b = random.randrange(len(pl.hand))#行動選択(乱数)#配列の位置を選択
                     if (pl.hand[int(b)] == eq) | (pl.hand[int(b)] == plus):#出せるかどうか
                         y = 1
-                    else:
-                        print("それは出せません")
+                    #else:
+                        #print("それは出せません")
                 fi = pl.hand[int(b)]
                 pl.hand.pop(int(b))
                 x = 1
         elif int(a) == 2:#
             if len(deck) == 0:#
-                print("それはできません")
+                #print("それはできません")
+                continue
             else:#
                 x = deck.pop(0)
                 pl.hand.append(x)
@@ -218,7 +221,7 @@ def MinQ(Q, s):
     min = Q[0][s]
     act = 0
     for i in range(4):
-        if (min > Q[i][s]):
+        if min > Q[i][s] and Q[i][s] != 0:
             min = Q[i][s]
             act = i
     return act
@@ -234,7 +237,7 @@ def QUpdate(Q,R,lastpoint,episode): #PSのQtable更新
     Cbid = 0.01
     #print("Rテーブルのデバッグ："+str(R[episode].action)+":"+str(R[episode].rstate)) 
     for i in range(episode):
-        print("Qに挿入するRテーブルのデバッグ："+str(R[i].action)+":"+str(R[i].rstate)+":i:"+str(i))
+        #print("Qに挿入するRテーブルのデバッグ："+str(R[i].action)+":"+str(R[i].rstate)+":i:"+str(i))
         Q[R[i].action][R[i].rstate]=Q[R[i].action][R[i].rstate]+Cbid*(Q[R[i].action][R[i].rstate]+lastpoint)
     return Q
 
@@ -250,7 +253,7 @@ if __name__ == '__main__':
     Q=[[0 for j in range(5)] for i in range(4)] #Qtable
     LastPoint1 = 0
     LastPoint2 = 0
-    playcount = 100 #回すゲーム数
+    playcount = 10000 #回すゲーム数
     path='result.csv'
     fo=open(path,'w')
     result = ""
@@ -273,14 +276,14 @@ if __name__ == '__main__':
                 plus = eqplus[1]
                 stateUpdate(player1,player2,eq,plus)
                 if player1.state < 5:#降りていないかの確認
-                    print("場の数" )
-                    print(field)
-                    print("先手")
+                    #print("場の数" )
+                    #print(field)
+                    #print("先手")
                     box = playCard(player1,lama_deck,field,eq,plus,R,episode,Q)
                     episode = episode + 1 
                     lama_deck = box[0]
                     field = box[1]
-                    print("action::::"+str(box[2]))
+                    #print("action::::"+str(box[2]))
                     R.append(RULE(box[3],box[2])) 
                 setpointUpdate(player1) 
                 eqplus = eqplusChange(field)
@@ -289,29 +292,29 @@ if __name__ == '__main__':
                 stateUpdate(player1,player2,eq,plus)
                 if(isFinish(player1,player2)):#先手側が上がっていた時にプレイできないようにするため
                     if player2.state < 5:#降りていないかの確認
-                        print("場の数" )
-                        print(field)
-                        print("後手")
+                        #print("場の数" )
+                        #print(field)
+                        #print("後手")
                         box = playCardRnd(player2,lama_deck,field,eq,plus)
                         lama_deck = box[0]
                         field = box[1]
                 setpointUpdate(player2)
             gamepointUpdate(player1)
             gamepointUpdate(player2)
-            print(player1.hand)
+            #print(player1.hand)
             if len(player1.hand) == 0:
                 pointMinus(player1)#上がっていたら一枚減らす
             if len(player2.hand) == 0:
                 pointMinus(player2)#上がっていたら一枚減らす
             LastPoint1 = player1.black_game * 5 + player1.white_game
             LastPoint2 = player2.black_game * 5 + player2.white_game
-            print("先手のポイント")
-            print(LastPoint1)
-            print("後手のポイント")
-            print(LastPoint2)
-            print(episode)
+            #print("先手のポイント")
+            #print(LastPoint1)
+            #print("後手のポイント")
+            #print(LastPoint2)
+            #print(episode)
             Q=QUpdate(Q,R,LastPoint1,episode)
-            print(Q)
+            #print(Q)
         i += 1
         print("試行回数："+str(i))
         result+=str(LastPoint1)+","+str(LastPoint2)+"\n"
