@@ -136,17 +136,21 @@ def gameFinish(pl1,pl2):#gameの終了判定
     else:
         return False
 
-def playCard(pl,lama_deck,field,eq,plus,R,episode,Q):#行動選択(PS)
+def playCard(pl,lama_deck,field,eq,plus,R,episode,Q,i):#行動選択(PS)
     deck = lama_deck#デッキ
     fi = field#
     x = 0#ループ用
     state = pl.state
+    o = 0
+    next = (field + 1) % 4
     while x < 1:#行動選択するまで終了しないために
         #print("入力:0:降り,1:fieldを出す,2:nextを出す,3:カードを引く,")
         #print(pl.hand)
         #a = ActionSelect(pl.state)#行動選択
-        next = (field + 1) % 4
-        a = eGreedy(Q,state,0.2)
+        #if i<100:
+            #a = random.randrange(4)
+        a = eGreedy(Q,state,0,o)
+        o += 1
         if int(a) == 0:#降り
             fold(pl)
             x = 1
@@ -217,28 +221,42 @@ def playCardRnd(pl,lama_deck,field,eq,plus):#行動選択(乱数)
     return deck, fi
 
 # 状態sのQ値が最小となる行動actを返す
-def MinQ(Q, s):
+def MinQ(Q, s, rank):
     min = Q[0][s]
+    ain = [0,0,0,0]
+    cmpa = 0
     act = 0
     for i in range(4):
-        if min > Q[i][s] and Q[i][s] != 0:
-            min = Q[i][s]
+        ain[i] = Q[i][s]
+    ain.sort()
+    cmpa = ain[rank]
+    i = 0
+    for i in range(4):
+        if cmpa == Q[i][s]:
             act = i
+            break
+    #print(act)
     return act
 
 # ε-Greedy選択
-def eGreedy(Q, s, e):
+def eGreedy(Q, s, e, rank):
     if random.random() < 1-e and s != 0:	# 確率1-eでgreedy
-        return MinQ(Q, s)
+        return MinQ(Q, s, rank)
     else:			# 確率eでランダム
+        print("乱数だすよーん↓")
         return random.randrange(4)
 
-def QUpdate(Q,R,lastpoint,episode): #PSのQtable更新
-    Cbid = 0.01
+def QUpdate(Q,R,lastpoint,episode,TF): #PSのQtable更新
+    Cbid = 0.0001
     #print("Rテーブルのデバッグ："+str(R[episode].action)+":"+str(R[episode].rstate)) 
-    for i in range(episode):
+    if TF:
+        for i in range(episode):
         #print("Qに挿入するRテーブルのデバッグ："+str(R[i].action)+":"+str(R[i].rstate)+":i:"+str(i))
-        Q[R[i].action][R[i].rstate]=Q[R[i].action][R[i].rstate]+Cbid*(Q[R[i].action][R[i].rstate]+lastpoint)
+            Q[R[i].action][R[i].rstate]=Q[R[i].action][R[i].rstate]+Cbid*(Q[R[i].action][R[i].rstate]+(lastpoint))
+    else:
+        for i in range(episode):
+        #print("Qに挿入するRテーブルのデバッグ："+str(R[i].action)+":"+str(R[i].rstate)+":i:"+str(i))
+            Q[R[i].action][R[i].rstate]=Q[R[i].action][R[i].rstate]+Cbid*(Q[R[i].action][R[i].rstate]-(lastpoint))
     return Q
 
 #ココからメイン
@@ -253,11 +271,14 @@ if __name__ == '__main__':
     Q=[[0 for j in range(5)] for i in range(4)] #Qtable
     LastPoint1 = 0
     LastPoint2 = 0
-    playcount = 10000 #回すゲーム数
+    playcount = 100000 #回すゲーム数
     path='result.csv'
     fo=open(path,'w')
     result = ""
     i = 0 #
+    winner = 0
+    before = 0
+
     #下からゲームスタート
     while i < playcount:
         R = []
@@ -279,7 +300,7 @@ if __name__ == '__main__':
                     #print("場の数" )
                     #print(field)
                     #print("先手")
-                    box = playCard(player1,lama_deck,field,eq,plus,R,episode,Q)
+                    box = playCard(player1,lama_deck,field,eq,plus,R,episode,Q,i)
                     episode = episode + 1 
                     lama_deck = box[0]
                     field = box[1]
@@ -308,16 +329,20 @@ if __name__ == '__main__':
                 pointMinus(player2)#上がっていたら一枚減らす
             LastPoint1 = player1.black_game * 5 + player1.white_game
             LastPoint2 = player2.black_game * 5 + player2.white_game
-            #print("先手のポイント")
-            #print(LastPoint1)
-            #print("後手のポイント")
-            #print(LastPoint2)
-            #print(episode)
-            Q=QUpdate(Q,R,LastPoint1,episode)
-            #print(Q)
+            if LastPoint1 > LastPoint2:
+                Q=QUpdate(Q,R,LastPoint1,episode,True)
+            else:
+                Q=QUpdate(Q,R,LastPoint1,episode,False)
         i += 1
         print("試行回数："+str(i))
-        result+=str(LastPoint1)+","+str(LastPoint2)+"\n"
+        #result+=str(LastPoint1)+","+str(LastPoint2)+"\n"
+        if LastPoint1>LastPoint2:
+            winner+=1
+        if i%1000 == 0:
+            result+=str((winner-before)/1000)+'\n'
+            before = winner
     fo.write(result)
     fo.close()
+    print(Q)
+    print(winner/playcount)
         
