@@ -1,6 +1,6 @@
 import sys
 import random
-
+global Q_table
 class Player():
     hand = []
     state = 1 #1:同じ数字のみを出せる状態, 2:一つ大きい数字のみを出せる状態 3:2種類出せる状態, 4:何も出せない状態, 5:終了状態, 6:上がった状態
@@ -28,7 +28,7 @@ def eqplusChange(field):#eq,plusを算出する
         print("エラー")
     return eq,plus
 
-def stateJudge(pl):
+def stateJudge(pl,eq,plus):
     if len(pl.hand) == 0:#上がっている状態
         pl.state = 6
     elif pl.state == 5:#降りている状態
@@ -43,9 +43,9 @@ def stateJudge(pl):
     else:#何も出せない状態
         pl.state = 4
 
-def stateUpdate(pl1,pl2):
-    stateJudge(pl1)
-    stateJudge(pl2)
+def stateUpdate(pl1,pl2,eq,plus):
+    stateJudge(pl1,eq,plus)
+    stateJudge(pl2,eq,plus)
 
 def exchange(black,white):#black,whiteを両替する
     a = divmod(white,5)
@@ -94,7 +94,6 @@ def initialize(pl1,pl2,lama_deck,field):#初期化
     pl1.state = 0#stateを0で初期化
     pl2.state = 0#stateを0で初期化
     field = lama_deck.pop(0)#デッキの一番上を場に出す
-    firstmove = True
     return lama_deck,field
 
 def pointMinus(pl):#上がったときに点数を下げる
@@ -155,13 +154,56 @@ def playCard(pl,lama_deck,field,eq,plus):#行動選択
             else:#
                 x = deck.pop(0)
                 pl.hand.append(x)
+                pl.hand.sort()
                 x = 1
     return deck, fi
+
+def randomact(pl,lama_deck,field,eq,plus):
+    x = 0
+    deck = lama_deck
+    fi = field
+    while(x == 0):
+        act = random.randint(1,100)#1:降りる,2:同じ数字を出す,3:次の数字を出す,4:カードを引く
+        if(act%4 == 1):
+            fold(pl)
+            x = 1
+        elif(act%4 == 2):
+            if pl.state == 1 | pl.state == 3:
+                pl.hand.pop(pl.hand.index(fi))
+                x = 1
+        elif(act%4 == 3):
+            if pl.state == 2 | pl.state == 3:
+                fi = plus
+                pl.hand.pop(pl.hand.index(fi))
+                x = 1
+        else:
+            if len(deck) != 0:
+                x = deck.pop(0)
+                pl.hand.append(x)
+                pl.hand.sort()
+                x = 1
+    return deck,fi
+
+def Q_learning(pl,lama_deck,field,eq,plus):
+    #1:同じ数字 2:一つ大きい数字 3:2種類 4:何も出せない 5:終了状態, 6:上がった状態
+    qpoint = random.randint(1,100)
+    ipusiron = 10
+    if(ipusiron > qpoint):
+        ganma = 0.1
+        arufa = 0.5
+        s = pl.state
+        s2 = 0
+        if(s < 5):
+            Q_table[s, a] = (1 - arufa) * Q[s, a] + arufa (reward + ganma)
+    else:
+        randomact(pl,lama_deck,field,eq,plus)
+    return deck,fi
+
 
 #ココからメイン
 if __name__ == '__main__':
     global lama_deck #デッキ
-    global firstmove
+    Q_table = [[0 for i in range(5)] for j in range(6)]
     field = 0 #場の数
     eq = 0 #stateを出すときに使う．fieldと同じ数
     plus = 0 #stateを出すときに使う．eqの一つ次の数
@@ -180,29 +222,30 @@ if __name__ == '__main__':
                 eqplus = eqplusChange(field)#eqとplusの値を算出
                 eq = eqplus[0]
                 plus = eqplus[1]
-                stateUpdate(player1,player2)
+                stateUpdate(player1,player2,eq,plus)
                 if player1.state < 5:#降りていないかの確認
                     print("場の数" )
                     print(field)
                     print("先手")
-                    box = playCard(player1,lama_deck,field,eq,plus)
+                    box = randomact(player1,lama_deck,field,eq,plus)
                     lama_deck = box[0]
                     field = box[1]
                 setpointUpdate(player1)
-                eqplusChange(field)
-                stateUpdate(player1,player2)
+                eqplus = eqplusChange(field)
+                eq = eqplus[0]
+                plus = eqplus[1]
+                stateUpdate(player1,player2,eq,plus)
                 if(isFinish(player1,player2)):#先手側が上がっていた時にプレイできないようにするため
                     if player2.state < 5:#降りていないかの確認
                         print("場の数" )
                         print(field)
                         print("後手")
-                        box = playCard(player2,lama_deck,field,eq,plus)
+                        box = randomact(player2,lama_deck,field,eq,plus)
                         lama_deck = box[0]
                         field = box[1]
                 setpointUpdate(player2) 
             gamepointUpdate(player1)
             gamepointUpdate(player2)
-            print(player1.hand)
             if len(player1.hand) == 0:
                 pointMinus(player1)#上がっていたら一枚減らす
             if len(player2.hand) == 0:
@@ -212,4 +255,3 @@ if __name__ == '__main__':
             print("後手のポイント")
             print(player2.black_game * 5 + player2.white_game)
         i += 1
-        
