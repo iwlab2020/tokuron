@@ -127,8 +127,9 @@ def playCard(pl,lama_deck,field,eq,plus,episode,bid):#行動選択
     fi = field#
     x = 0#ループ用
     state = pl.state
+    ne=(fi+1)%4
     while x < 1:#行動選択するまで終了しないために
-        #print("入力:0:降り,1:カードを出す2:カードを引く,3:何もしない(デバッグ用)")
+        #print("入力:0:降り,1:fieldを出す2:nextを出す,3:引く")
         #print(pl.hand)
         #a = ActionSelect(pl.state)#行動選択
         a = eGreedy(bid,state,0.2)
@@ -138,26 +139,26 @@ def playCard(pl,lama_deck,field,eq,plus,episode,bid):#行動選択
             #    x = 1
             fold(pl)
             x=1
-        elif int(a) == 1:#カードを出す
-            if pl.state == 4:
+        elif int(a) == 1:#fieldを出す
+            if pl.state == 4 or pl.state==2:
                 pass
                 #print("それはできません")
             else:
-                pass
                 #print("カード")
                 #print(pl.hand)
-                y = 0
-                while y < 1:#エラー処理
-                    b = random.randrange(len(pl.hand))#配列の位置を選択
-                    if (pl.hand[int(b)] == eq) | (pl.hand[int(b)] == plus):#出せるかどうか
-                        y = 1
-                    else:
-                        pass
-                        #print("それは出せません")
-                fi = pl.hand[int(b)]
-                pl.hand.pop(int(b))
+                i_next=pl.hand.index(fi)
+                fi =pl.hand[i_next]
+                pl.hand.remove(fi)
                 x = 1
-        elif int(a) == 2:#
+        elif int(a) == 2:#nextを出す
+            if pl.state == 4 or pl.state == 1:
+                pass
+            else:
+                i_next=pl.hand.index(ne)
+                fi=pl.hand[i_next]
+                pl.hand.remove(ne)
+                x=1
+        elif int(a) == 3:#
             if len(deck) == 0:
                 pass
                 #print("それはできません")
@@ -211,19 +212,19 @@ def playCardRnd(pl,lama_deck,field,eq,plus):#行動選択(乱数)
     return deck, fi
 
 # 状態sのQ値が最小となる行動actを返す
-def MinQ(Q, s):
-    min = Q[s][0]
+def MaxQ(Q, s):
+    max = Q[s][0]
     act = 0
     for i in range(4):
-        if (min < Q[s][i]):
-            min = Q[s][i]
+        if (max < Q[s][i]):
+            max = Q[s][i]
             act = i
     return act
 
 # ε-Greedy選択
 def eGreedy(bid, s, e):
     if random.random() < 1-e and s != 0:	# 確率1-eでgreedy
-        return MinQ(Q, s)
+        return MaxQ(Q, s)
     else:			# 確率eでランダム
         return random.randrange(4)
 
@@ -233,14 +234,14 @@ if __name__ == '__main__':
     field = 0 #場の数
     eq = 0 #stateを出すときに使う．fieldと同じ数
     plus = 0 #stateを出すときに使う．eqの一つ次の数
-    Cbid = 0.03
+    Cbid = 0.1
     win=0
     lama_deck=[]
     Q=[[0 for j in range(4)] for i in range(7)] #Qtable
     bid=[[0 for j in range(4)] for i in range(7)]
     LastPoint1 = 0
     LastPoint2 = 0
-    playcount = 3000 #回すゲーム数
+    playcount = 10000 #回すゲーム数
     path='result.csv'
     fo=open(path,'w')
     result = ""
@@ -266,14 +267,16 @@ if __name__ == '__main__':
                     #print(field)
                     #print("先手")
                     bpoint=pointManage(player1)
+                    bp2=pointManage(player2)
                     if episode!=0:
                         bbs=bs
                     bs=player1.state
                     box = playCard(player1,lama_deck,field,eq,plus,episode,bid)
                     point=pointManage(player1)
-
-                    r=(bpoint[0]*5+bpoint[1])-(point[0]*5+point[1])
-
+                    p2=pointManage(player2)
+                    #r=(bpoint[0]*5+bpoint[1])-(point[0]*5+point[1])
+                    r=1/(point[0]*5+point[1])
+                    #r=((bpoint[0]*5+bpoint[1])-(bp2[0]*5+bp2[1]))-((point[0]*5+point[1])-(p2[0]*5+p2[1]))
                     if episode!=0:
                         Q[bbs][ba]=Q[bbs][ba]+bid[bs][box[2]]
                     Q[bs][box[2]]=Q[bs][box[2]]+(r-bid[bs][box[2]])
