@@ -147,9 +147,6 @@ def randhand(s):
 
 # Action 0：降りる，1：fieldを出す，2：nextを出す，3：引く
 def doAction(pl, deck, field, act):
-    #print('act = ', act)
-    #print('field = ', field)
-    #print('state = ', pl.state)
     next = (field + 1) % 4
     if act == 0:
         fold(pl)
@@ -178,47 +175,53 @@ if __name__ == '__main__':
     Q = [[0 for j in range(4)] for i in range(7)] #Qtable
     SumReward = [[0 for j in range(4)] for i in range(7)] #累積報酬テーブル
     RewardCount = [[0 for j in range(4)] for i in range(7)] #報酬獲得回数テーブル
-    Rules = []
-    e = 0
-    global lama_deck #デッキ
+    Rules = []  #
+    e = 0.1
+    lama_deck=[] #山札
     field = 0 #場の数
     eq = 0 #stateを出すときに使う．fieldと同じ数
     plus = 0 #stateを出すときに使う．eqの一つ次の数
-    lama_deck=[]
-    playcount = 1000000 #回すゲーム数
+    playcount = 0 #回すゲーム数
     winrates = []
     wincount = 0
-    i = 0 #
+    r_sel = False
+    r = 0
+    i = 0 
+
+    playcount = int(input('試行数：'))
+    if input('差分とるか？（Y/n）：') == 'y':
+        r_sel = True
+
     #下からゲームスタート
     while i < playcount:
         player1 = Player()
         player2 = Player()
-        while(gameFinish(player1,player2)):
-            box = initialize(player1, player2,lama_deck,field) #初期化
-            lama_deck = box[0]
-            field = box[1]
+        while(gameFinish(player1, player2)):
+            lama_deck, field = initialize(player1, player2, lama_deck, field) #初期化
+            #lama_deck = box[0]
+            #field = box[1]
             #setのループ
             episode = 0
-            while(isFinish(player1,player2)):
-                eqplus = eqplusChange(field) #eqとplusの値を算出
-                eq = eqplus[0]
-                plus = eqplus[1]
-                stateUpdate(player1,player2,eq,plus)
+            while(isFinish(player1, player2)):
+                eq, plus = eqplusChange(field) #eqとplusの値を算出
+                #eq = eqplus[0]
+                #plus = eqplus[1]
+                stateUpdate(player1, player2, eq, plus)
                 if player1.state < 5: #降りていないかの確認
                     #print("場の数" )
                     #print(field)
                     #print("先手")
-                    #box = playCard(player1,lama_deck,field,eq,plus)
-                    act = randhand(player1.state)
+                    #box = playCard(player1, lama_deck, field, eq,plus)
+                    act = randhand(player1.state) 
                     lama_deck, field = doAction(player1, lama_deck, field, act)
                     #lama_deck = box[0]
                     #field = box[1]
                 setpointUpdate(player1)
-                eqplus = eqplusChange(field)
-                eq = eqplus[0]
-                plus = eqplus[1]
-                stateUpdate(player1,player2,eq,plus)
-                if(isFinish(player1,player2)): #先手側が上がっていた時にプレイできないようにするため
+                eq, plus = eqplusChange(field)
+                #eq = eqplus[0]
+                #plus = eqplus[1]
+                stateUpdate(player1, player2, eq,plus)
+                if(isFinish(player1, player2)): #先手側が上がっていた時にプレイできないようにするため
                     s = player2.state
                     if s < 5: #降りていないかの確認
                         #print("場の数" )
@@ -230,31 +233,45 @@ if __name__ == '__main__':
                         Rules.append([s, act])
                         #lama_deck = box[0]
                         #field = box[1]
-                        stateUpdate(player1, player2, field, (field+1) % 4)
+                        stateUpdate(player1, player2, field, (field + 1) % 4)
                         episode += 1
                 setpointUpdate(player2)
+                
             # セットポイントの計算
             point1 = player1.black_set * 5 + player1.white_set
             point2 = player2.black_set * 5 + player2.white_set
-            # Player2が負けなら報酬
+
+            # 報酬計算
+            if r_sel:
+                r = abs(point2 - point1)
+            else:
+                r = 10
+
+            # 報酬獲得
             if point1 > point2:
                 for t in range(episode):
                     RewardCount[Rules[t][0]][Rules[t][1]] += 1
-                    SumReward[Rules[t][0]][Rules[t][1]] -= point2
+                    SumReward[Rules[t][0]][Rules[t][1]] -= r
                     Q[Rules[t][0]][Rules[t][1]] = SumReward[Rules[t][0]][Rules[t][1]] / RewardCount[Rules[t][0]][Rules[t][1]]
+            else:
+                for t in range(episode):
+                    RewardCount[Rules[t][0]][Rules[t][1]] += 1
+                    SumReward[Rules[t][0]][Rules[t][1]] += r
+                    Q[Rules[t][0]][Rules[t][1]] = SumReward[Rules[t][0]][Rules[t][1]] / RewardCount[Rules[t][0]][Rules[t][1]]
+             
+            # ゲームポイントの更新
             gamepointUpdate(player1)
             gamepointUpdate(player2)
             #print(player1.hand)
             if len(player1.hand) == 0:
-                pointMinus(player1)#上がっていたら一枚減らす
+                pointMinus(player1) #上がっていたら一枚減らす
             if len(player2.hand) == 0:
-                pointMinus(player2)#上がっていたら一枚減らす
+                pointMinus(player2) #上がっていたら一枚減らす
 
         if (player1.black_game * 5 + player1.white_game) > (player2.black_game * 5 + player2.white_game):
             wincount += 1
         i += 1
         winrates.append((wincount/i)*100)
-
     
     with open('Monte_Carlo.csv', 'w') as w_file:
         for i in range(playcount):
